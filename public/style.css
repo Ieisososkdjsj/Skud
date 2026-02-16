@@ -1,0 +1,127 @@
+Т* {
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #f4f6f9;
+  display: flex;
+  justify-content: center;
+}
+
+/* ===== Центральный контейнер ===== */
+
+.container {
+  width: 100%;
+  max-width: 900px;
+  padding: 30px;
+}
+
+/* ===== Навигация ===== */
+
+.nav {
+  width: 100%;
+  background: #b8b8e7;
+  padding: 15px;
+  display: flex;
+  gap: 10px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.nav-btn {
+  text-decoration: none;
+  padding: 10px 20px;
+  background: #8d8abb;
+  color: white;
+  border-radius: 6px;
+  font-weight: bold;
+  transition: 0.2s ease;
+}
+
+.nav-btn:hover {
+  background: #7471a0;
+}
+
+/* ===== Карточка ===== */
+
+.card {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+  margin-bottom: 30px;
+}
+
+/* ===== Заголовки ===== */
+
+h1,
+h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* ===== Формы ===== */
+
+input,
+select {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background: #2e50cc;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.2s ease;
+}
+
+button:hover {
+  background: #1433a1;
+}
+
+/* ===== Терминал ===== */
+
+#result {
+  margin-top: 20px;
+  font-size: 22px;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* ===== Таблица ===== */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+th,
+td {
+  padding: 10px;
+  text-align: center;
+}
+
+th {
+  background: #2c3e50;
+  color: white;
+}
+
+tr:nth-child(even) {
+  background: #f2f2f2;
+}
+
+tr:hover {
+  background: #e6f2ff;
+}

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Администратор</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="nav">
+        <a href="/" class="nav-btn">Терминал</a>
+      </div>
+
+      <div class="card">
+        <h2>Регистрация пользователя</h2>
+
+        <input id="fio" placeholder="ФИО полностью" />
+        <input id="uid" placeholder="UID карты" />
+
+        <select id="department">
+          <option value="ГВК">ГВК</option>
+          <option value="ОГТ">ОГТ</option>
+          <option value="Склад">Склад</option>
+          <option value="Офис">Офис</option>
+        </select>
+
+        <input
+          type="password"
+          id="adminPassword"
+          placeholder="Пароль администратора"
+        />
+
+        <button onclick="addUser()">Добавить</button>
+
+        <h2>Логи</h2>
+        <button onclick="loadLogs()">Обновить логи</button>
+
+        <table id="logsTable"></table>
+      </div>
+    </div>
+    <script>
+      async function addUser() {
+        const fio = document.getElementById("fio").value.trim();
+        const uid = document.getElementById("uid").value.trim();
+        const department = document.getElementById("department").value;
+        const adminPassword = document
+          .getElementById("adminPassword")
+          .value.trim();
+
+        if (!fio || !uid || !department || !adminPassword) {
+          alert("Заполните все поля");
+          return;
+        }
+
+        try {
+          const res = await fetch("/api/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fio, uid, department, adminPassword }),
+          });
+
+          const data = await res.json();
+          alert(data.message || data.error);
+        } catch (err) {
+          console.error(err);
+          alert("Ошибка при добавлении пользователя");
+        }
+      }
+
+      async function loadLogs() {
+        try {
+          const res = await fetch("/api/logs");
+          if (!res.ok) throw new Error(`Ошибка сервера ${res.status}`);
+          const logs = await res.json();
+
+          const table = document.getElementById("logsTable");
+          table.innerHTML = `
+            <tr>
+              <th>ФИО</th>
+              <th>UID</th>
+              <th>Статус</th>
+              <th>Точка доступа</th>
+              <th>Время</th>
+            </tr>
+          `;
+
+          logs.forEach((log) => {
+            table.innerHTML += `
+              <tr>
+                <td>${log["ФИО"] || "Неизвестно"}</td>
+                <td>${log["UID"]}</td>
+                <td>${log.status}</td>
+                <td>${log.access_point}</td>
+                <td>${new Date(log.timestamp).toLocaleString()}</td>
+              </tr>
+            `;
+          });
+        } catch (err) {
+          console.error(err);
+          alert("Не удалось загрузить логи. Проверьте сервер.");
+        }
+      }
+    </script>
+  </body>
+</html>

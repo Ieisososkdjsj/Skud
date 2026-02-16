@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Терминал</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="nav">
+        <a href="/admin.html" class="nav-btn">Администратор</a>
+      </div>
+
+      <div class="card">
+        <h1>RFID Terminal</h1>
+        <input id="uidInput" placeholder="Приложите карту" />
+
+        <h2 id="result"></h2>
+      </div>
+    </div>
+
+    <script>
+      const input = document.getElementById("uidInput");
+      const result = document.getElementById("result");
+
+      input.focus();
+
+      input.addEventListener("keydown", async function (e) {
+        if (e.key !== "Enter") return;
+
+        const uid = this.value.trim();
+        if (!uid) return;
+
+        const access_point = document.getElementById("accessPoint").value;
+
+        try {
+          const res = await fetch("/api/check", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ uid, access_point }),
+          });
+          const data = await res.json();
+
+          switch (data.status) {
+            case "ALLOWED":
+              result.innerText = "ДОСТУП РАЗРЕШЕН: " + (data.fio || "");
+              result.style.color = "green";
+              break;
+
+            case "DENIED":
+              result.innerText = "ДОСТУП ЗАПРЕЩЕН";
+              result.style.color = "red";
+              break;
+
+            case "ERROR":
+              result.innerText = "ОШИБКА СЕРВЕРА";
+              result.style.color = "orange";
+              break;
+
+            default:
+              result.innerText = "НЕИЗВЕСТНЫЙ ОТВЕТ";
+              result.style.color = "gray";
+          }
+        } catch (err) {
+          result.innerText = "НЕТ СОЕДИНЕНИЯ С СЕРВЕРОМ";
+          result.style.color = "orange";
+        }
+
+        this.value = "";
+        input.focus();
+      });
+    </script>
+  </body>
+</html>
