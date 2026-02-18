@@ -1,49 +1,66 @@
 const { Pool } = require('pg');
 
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'password',
-  database: process.env.DB_NAME || 'Skud',
-  port: process.env.DB_PORT || 5432
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT
 });
 
-// Initialize tables
+// Инициализация базы данных
 async function initDB() {
-  await pool.query(`
-    DO $$ BEGIN
-      CREATE TYPE department_enum AS ENUM ('ГВК','ОГТ','Склад','Офис');
-    EXCEPTION
-      WHEN duplicate_object THEN null;
-    END $$;
-  `);
+  try {
+    // ENUM для отделов
+    await pool.query(`
+      DO $$ BEGIN
+        CREATE TYPE department_enum AS ENUM ('ГВК','ОГТ','Склад','Офис');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      "ФИО" VARCHAR(150) NOT NULL,
-      "UID" VARCHAR(32) UNIQUE NOT NULL,
-      "Отдел" department_enum NOT NULL,
-      access_point VARCHAR(50) NOT NULL DEFAULT 'КПП',
-      is_active BOOLEAN NOT NULL DEFAULT TRUE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+    // Таблица пользователей
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        "ФИО" VARCHAR(150) NOT NULL,
+        "UID" VARCHAR(32) UNIQUE NOT NULL,
+        "Отдел" department_enum NOT NULL,
+        access_point VARCHAR(50) NOT NULL DEFAULT 'КПП',
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS logs (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      "UID" VARCHAR(32) NOT NULL,
-      access_point VARCHAR(50) NOT NULL,
-      status VARCHAR(20) NOT NULL,
-      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+    // Таблица логов
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        "UID" VARCHAR(32) NOT NULL,
+        access_point VARCHAR(50) NOT NULL,
+        status VARCHAR(20) NOT NULL,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
-  console.log('Database initialized');
+    // Таблица администраторов
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admins (
+        id SERIAL PRIMARY KEY,
+        login TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL
+      );
+    `);
+
+    console.log('Database initialized successfully');
+  } catch (err) {
+    console.error('Ошибка инициализации базы:', err);
+  }
 }
 
+// Запуск инициализации
 initDB();
 
 module.exports = pool;

@@ -1,24 +1,81 @@
-const express = require("express");
-const path = require("path");
-const pool = require("./db");
 require("dotenv").config();
 
-const app = express();
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "../public")));
+const express = require("express");
+const path = require("path");
+const session = require("express-session");
+const bcrypt = require("bcrypt");
+const pool = require("./db");
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const app = express();
 
 const allowedDepartments = ["ГВК", "ОГТ", "Склад", "Офис"];
 const fioRegex = /^[А-ЯЁ][а-яё]+ [А-ЯЁ][а-яё]+ [А-ЯЁ][а-яё]+$/;
 
-//ДОБАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯ
-app.post("/api/users", async (req, res) => {
-  const { fio, uid, department, adminPassword } = req.body;
+app.use(express.json());
 
-  if (adminPassword !== ADMIN_PASSWORD) {
-    return res.status(403).json({ error: "Неверный пароль администратора" });
+//Middleware
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false },
+  }),
+);
+
+app.use(express.static("public"));
+
+// Middleware проверки администратора
+function checkAdmin(req, res, next) {
+  if (!req.session.adminId) {
+    return res.status(403).json({ error: "Not authorized" });
   }
+  next();
+}
+
+// Логин администратора
+app.post("/api/admin/login", async (req, res) => {
+  const { login, password } = req.body;
+
+  if (!login || !password) {
+    return res.status(400).json({ status: "ERROR" });
+  }
+
+  try {
+    const result = await pool.query("SELECT * FROM admins WHERE login = $1", [
+      login,
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ status: "DENIED" });
+    }
+
+    const admin = result.rows[0];
+    const match = await bcrypt.compare(password, admin.password);
+
+    if (!match) {
+      return res.status(401).json({ status: "DENIED" });
+    }
+
+    req.session.adminId = admin.id;
+
+    res.json({ status: "OK" });
+  } catch (err) {
+    console.error("Ошибка логина:", err);
+    res.status(500).json({ status: "ERROR" });
+  }
+});
+
+// Выход администратора
+app.post("/api/admin/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.json({ status: "LOGOUT" });
+  });
+});
+
+//Регистрация пользователя
+app.post("/api/users", checkAdmin, async (req, res) => {
+  const { fio, uid, department } = req.body;
 
   if (!fioRegex.test(fio)) {
     return res.status(400).json({
@@ -58,8 +115,7 @@ app.post("/api/check", async (req, res) => {
   try {
     const result = await pool.query(
       `
-      SELECT * FROM users
-      WHERE "UID" = $1 AND is_active = true`,
+      SELECT * FROM users WHERE "UID" = $1 AND is_active = true`,
       [uid],
     );
 
@@ -67,7 +123,7 @@ app.post("/api/check", async (req, res) => {
       await pool.query(
         `
         INSERT INTO logs ("UID", access_point, status)
-        VALUES ($1, $2, 'DENIED')`,
+         VALUES ($1, $2, 'DENIED')`,
         [uid, access_point],
       );
 
@@ -75,36 +131,27 @@ app.post("/api/check", async (req, res) => {
     }
 
     const user = result.rows[0];
-
-    //Логика доступа
     const allowed = access_point === "КПП" || user["Отдел"] === access_point;
-    await pool.query(`
-          INSERT INTO logs (user_id, "UID", access_point, status) VALUES ($1, $2, $3, $4),
-      [user.id, uid, access_point, allowed ? 'ALLOWED' : 'DENIED']`);
 
-    res.json({ status: allowed ? "ALLOWED" : "DENIED", fio: user["ФИО"] });
-
-    //Разрешено
     await pool.query(
       `
       INSERT INTO logs (user_id, "UID", access_point, status)
-      VALUES ($1, $2, $3, 'ALLOWED')
-    `,
-      [user.id, uid, access_point],
+       VALUES ($1, $2, $3, $4)`,
+      [user.id, uid, access_point, allowed ? "ALLOWED" : "DENIED"],
     );
 
-    res.json({
-      status: "ALLOWED",
-      fio: user["ФИО"],
+    return res.json({
+      status: allowed ? "ALLOWED" : "DENIED",
+      fio: allowed ? user["ФИО"] : undefined,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ status: "ERROR" });
+    console.error("CHECK ERROR:", err);
+    return res.status(500).json({ status: "ERROR" });
   }
 });
 
 //Логи
-app.get("/api/logs", async (req, res) => {
+app.get("/api/logs", checkAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT u."ФИО", l."UID", l.status, l.access_point, l.timestamp
